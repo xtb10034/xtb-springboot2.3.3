@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: Project user account
+  annotations:
+    description: "Can be used to create roles and rolebinding for a given project"
+objects:
+  # Deployment config of GMT
+  - kind: DeploymentConfig
+    apiVersion: v1
+    metadata:
+      name: ${SCALA_PROJECT_NAME}   # tribe name-application name (as defined in Jenkins file)
+      namespace: ${PROJECT_NAME}
+      labels:
+        app: ${SCALA_PROJECT_NAME}
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 1
+      selector:
+        app: ${SCALA_PROJECT_NAME}
+        deploymentconfig: ${SCALA_PROJECT_NAME}
+      template:
+        metadata:
+          labels:
+            app: ${SCALA_PROJECT_NAME}
+            deploymentconfig: ${SCALA_PROJECT_NAME}
+        spec:
+          nodeSelector:
+            ibm-cloud.kubernetes.io/worker-pool-name: default
+          containers:
+            - image: >-
+                na.artifactory.taas.kyndryl.net/kyn-gsi-ica-docker-local/${INSTANCE_TYPE}/${SCALA_PROJECT_NAME}:latest
+              imagePullPolicy: Always
+              name: ${SCALA_PROJECT_NAME}
+              env:
+                - name: SPARK_DRIVER_HOST
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: status.podIP
+              volumeMounts:
+                - name: jar-files
+                  mountPath: /app/gmt/jars
+                - name: files
+                  mountPath: /app/gmt/files
+                - name: logs
+                  mountPath: /app/gmt/logs
+                - name: db2-ssl-keystore
+                  readOnly: true
+                  mountPath: /opt/db2ssl/
+          volumes:
+            - name: jar-files
+              persistentVolumeClaim:
+                claimName: sis-${PROJECT_NAME}-jars
+            - name: files
+              persistentVolumeClaim:
+                claimName: sis-${PROJECT_NAME}-files
+            - name: logs
+              persistentVolumeClaim:
+                claimName: sis-${PROJECT_NAME}-logs
+            - name: db2-ssl-keystore
+              secret:
+                secretName: db2-ssl-keystore
+                defaultMode: 420
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          serviceAccountName: spark-sa
+
+  # Service for history server on port 8080
+  - kind: Service
+    apiVersion: v1
+    metadata:
+      namespace: ${PROJECT_NAME}
+      labels:
+        service: ${SCALA_PROJECT_NAME}
+      name: ${SCALA_PROJECT_NAME}
+    spec:
+      ports:
+        - name: 8080-tcp
+          port: 8080
+          protocol: TCP
+          targetPort: 8080
+      selector:
+        deploymentconfig: ${SCALA_PROJECT_NAME}
+      type: ClusterIP
+  # Route for the service defined above
+  - kind: Route
+    apiVersion: route.openshift.io/v1
+    metadata:
+      namespace: ${PROJECT_NAME}
+      labels:
+        routes: ${SCALA_PROJECT_NAME}
+      name: ${SCALA_PROJECT_NAME}
+    spec:
+      host: ${SCALA_PROJECT_NAME}-${PROJECT_NAME}.${OPENSHIFT_ROUTE}
+      port:
+        targetPort: 8080-tcp
+      to:
+        kind: Service
+        name: ${SCALA_PROJECT_NAME}
+        weight: 100
+      tls:
+        termination: edge
+        insecureEdgeTerminationPolicy: Redirect
+
+# parameters setting
+parameters:
+  - name: PROJECT_NAME
+    description: Name of the Spark master/worker image
+    required: true
+  - name: OPENSHIFT_ROUTE
+    description: Base route of openshift cluster
+    required: true
+  - name: INSTANCE_TYPE
+    required: true
+  - name: SCALA_PROJECT_NAME
+    required: true
