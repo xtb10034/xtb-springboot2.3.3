@@ -16,4 +16,9 @@ public class MyConfig {
 //    public Pet catPet(){
 //        return new Pet("Tom");
 //    }
+
+    @Bean(name = "bean4config")
+    public void run1(){
+        System.out.println("bean4config");
+    }
 }

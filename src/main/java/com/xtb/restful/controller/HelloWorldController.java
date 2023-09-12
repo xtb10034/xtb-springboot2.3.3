@@ -80,12 +80,12 @@ public class HelloWorldController {
     @ResponseBody
     @RequestMapping("/data")
     public void getData(){
-        User user = userService.getById(1);
-        System.out.println(user.getName());
-
-        userService.list().forEach(o->{
-            System.out.println(o.getName());
-        });
+//        User user = userService.getById(1);
+//        System.out.println(user.getName());
+//
+//        userService.list().forEach(o->{
+//            System.out.println(o.getName());
+//        });
 
         String key1 = "key1";
         ValueOperations<String, String> a = redisTemplate.opsForValue();

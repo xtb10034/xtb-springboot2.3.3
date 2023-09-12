@@ -26,7 +26,30 @@ spring:
 #mybatis:
 #  mapper-locations: classpath:mapper/*.xml
 
+management:
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        include: '*'  #以web方式暴露
+  endpoint:
+    beans:
+      enabled: true
+    health:
+      enabled: true
+      show-details: ALWAYS
+    info:
+      enabled: true
+    metrics:
+      enabled: true
 
+info:
+  appName: MySpringBoot2.3.3
+  mavenProjectName: @project.version@
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 
 
